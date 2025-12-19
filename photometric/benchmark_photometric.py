@@ -1,11 +1,12 @@
-from pathlib import Path
-import cv2
-import numpy as np
 import time
 import tracemalloc
-from typing import List, Tuple
 import urllib.request
-from skimage.metrics import structural_similarity, peak_signal_noise_ratio
+from pathlib import Path
+from typing import List, Tuple
+
+import cv2
+import numpy as np
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RESULT_DIR = PROJECT_ROOT / "result" / "photometric"
@@ -13,6 +14,7 @@ RESULT_DIR.mkdir(parents=True, exist_ok=True)
 
 print("Project root:", PROJECT_ROOT)
 print("Result dir:", RESULT_DIR)
+
 
 def _download_if_needed(url: str, out_path: Path) -> Path:
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -25,9 +27,7 @@ def _download_if_needed(url: str, out_path: Path) -> Path:
 
 # Photometric Compensation
 def photometric_compensation(
-    images: List[np.ndarray],
-    overlap_masks: List[np.ndarray],
-    min_pixels: int = 50
+    images: List[np.ndarray], overlap_masks: List[np.ndarray], min_pixels: int = 50
 ) -> List[np.ndarray]:
     """
     Sequential photometric compensation using linear gain and offset.
@@ -85,11 +85,10 @@ def photometric_compensation(
 
     return compensated
 
+
 # Multiband Blending
 def multiband_blending(
-    images: List[np.ndarray],
-    masks: List[np.ndarray],
-    num_levels: int = 5
+    images: List[np.ndarray], masks: List[np.ndarray], num_levels: int = 5
 ) -> np.ndarray:
     """
     Multiband blending using Laplacian pyramids.
@@ -155,6 +154,7 @@ def multiband_blending(
     result = np.clip(result * 255.0, 0, 255).astype(np.uint8)
     return result
 
+
 # =========== overlap_metrics =======
 def compute_overlap_metrics(img1, img2, overlap_mask):
     """
@@ -177,20 +177,16 @@ def compute_overlap_metrics(img1, img2, overlap_mask):
     img1_m[~mask] = 0
     img2_m[~mask] = 0
 
-    ssim = structural_similarity(
-        img1_m,
-        img2_m,
-        channel_axis=2,
-        data_range=255
-    )
+    ssim = structural_similarity(img1_m, img2_m, channel_axis=2, data_range=255)
 
     return psnr, ssim
+
 
 # Benchmark
 def main():
     print("Photometric & blending benchmark started.")
 
-    #1. read urls from tests/testdata/TEST_IMAGES.txt
+    # 1. read urls from tests/testdata/TEST_IMAGES.txt
     txt_path = PROJECT_ROOT / "tests" / "testdata" / "TEST_IMAGES.txt"
     if not txt_path.exists():
         raise FileNotFoundError(f"Missing {txt_path}")
@@ -208,7 +204,7 @@ def main():
     if len(urls) < 2:
         raise ValueError("TEST_IMAGES.txt must contain at least 2 image URLs")
 
-    #2. download 2 images
+    # 2. download 2 images
     download_dir = PROJECT_ROOT / "tests" / "testdata" / "downloaded"
     url1 = urls[0]
     url2 = urls[1]
@@ -219,13 +215,13 @@ def main():
     img1_path = _download_if_needed(url1, download_dir / f"img1{ext1}")
     img2_path = _download_if_needed(url2, download_dir / f"img2{ext2}")
 
-    #3 read images
+    # 3 read images
     img1 = cv2.imread(str(img1_path))
     img2 = cv2.imread(str(img2_path))
     if img1 is None or img2 is None:
         raise ValueError("Failed to read downloaded images )")
 
-    #4. make a simple overlap mask on common region
+    # 4. make a simple overlap mask on common region
     gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
     gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 
@@ -243,7 +239,7 @@ def main():
     warped_images = [img1_c, img2_c]
     overlap_masks = [overlap]
 
-    #5. simple seam masks (50/50 split) so multiband blending can run
+    # 5. simple seam masks (50/50 split) so multiband blending can run
     h, w = img1_c.shape[:2]
     seam_mask1 = np.zeros((h, w), dtype=np.uint8)
     seam_mask1[:, : w // 2] = 255
@@ -254,17 +250,13 @@ def main():
     t0 = time.perf_counter()
 
     compensated_images = photometric_compensation(warped_images, overlap_masks)
-    #Overlap quality metrics
+    # Overlap quality metrics
     psnr_before, ssim_before = compute_overlap_metrics(
-        warped_images[0],
-        warped_images[1],
-        overlap_masks[0]
+        warped_images[0], warped_images[1], overlap_masks[0]
     )
 
     psnr_after, ssim_after = compute_overlap_metrics(
-        compensated_images[0],
-        compensated_images[1],
-        overlap_masks[0]
+        compensated_images[0], compensated_images[1], overlap_masks[0]
     )
 
     print("Overlap metrics:")
@@ -293,6 +285,7 @@ def main():
     print(f"Elapsed time: {elapsed:.4f} s")
     print(f"Peak memory: {peak / 1024 / 1024:.2f} MB")
     print("Benchmark finished.")
+
 
 if __name__ == "__main__":
     main()
