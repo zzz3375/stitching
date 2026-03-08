@@ -12,9 +12,10 @@ from .stitching_error import StitchingError
 
 class Images(ABC):
     class Resolution(Enum):
-        MEDIUM = 0.6
-        LOW = 0.1
+        MEDIUM = 2
+        LOW = 0.6
         FINAL = -1
+
 
     @staticmethod
     def of(
