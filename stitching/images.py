@@ -12,7 +12,7 @@ from .stitching_error import StitchingError
 
 class Images(ABC):
     class Resolution(Enum):
-        MEDIUM = 2
+        MEDIUM = 0.6
         LOW = 0.6
         FINAL = -1
 
