@@ -14,7 +14,7 @@ class Images(ABC):
     class Resolution(Enum):
         MEDIUM = 2
         LOW = 0.6
-        FINAL = -1
+        FINAL = MEDIUM
 
 
     @staticmethod
